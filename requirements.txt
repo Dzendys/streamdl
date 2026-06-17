@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+yt-dlp
+httpx
+jinja2
+python-multipart

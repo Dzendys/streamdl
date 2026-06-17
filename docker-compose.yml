@@ -1,0 +1,7 @@
+services:
+  streamydl:
+    build: .
+    container_name: streamydl
+    ports:
+      - "8082:8080"
+    restart: unless-stopped
