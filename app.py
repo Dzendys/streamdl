@@ -140,6 +140,7 @@ async def extract_metadata(url: str) -> dict:
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
+        'noplaylist': True,
     }
     if os.path.exists(COOKIES_FILE):
         ydl_opts['cookiefile'] = COOKIES_FILE
