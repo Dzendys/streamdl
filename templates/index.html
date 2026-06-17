@@ -26,6 +26,7 @@
             <input type="hidden" name="downloadMode" id="hiddenDownloadMode" value="auto">
             <input type="hidden" name="videoQuality" id="hiddenVideoQuality" value="max">
             <input type="hidden" name="audioBitrate" id="hiddenAudioBitrate" value="320">
+            <input type="hidden" name="concurrency" id="hiddenConcurrency" value="5">
 
             <div class="section-label">
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -220,6 +221,24 @@
                             <span class="quality-badge">Úsporná</span>
                         </div>
                         <div class="quality-desc" id="desc-audio-128" data-original-desc="Minimální velikost souboru (pro data)">Minimální velikost souboru (pro data)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced Settings / Concurrency Slider -->
+            <div class="advanced-section">
+                <div class="section-label">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span>Rychlost stahování (Vlákna: <span id="concurrencyValue">5</span>)</span>
+                </div>
+                <div class="slider-wrapper">
+                    <input type="range" id="concurrencyRange" min="1" max="16" value="5" class="concurrency-slider">
+                    <div class="slider-labels">
+                        <span>Stabilní (1)</span>
+                        <span>Doporučeno (5)</span>
+                        <span>Maximum (16)</span>
                     </div>
                 </div>
             </div>
