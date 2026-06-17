@@ -197,119 +197,141 @@ async def extract_metadata(url: str) -> dict:
         asyncio.create_task(trigger_auto_update_on_failure())
         raise HTTPException(status_code=400, detail=f"Chyba yt-dlp: {str(e)}")
 
-# ---------------------------------------------------------------------------
-# Download job state (for SSE progress streaming)
-# ---------------------------------------------------------------------------
+def _fmt_bytes(n: float | int | None) -> str:
+    """Format a byte count to a human-readable string (e.g. '23.4 MiB')."""
+    if not n or n <= 0:
+        return '?'
+    for unit in ('B', 'KiB', 'MiB', 'GiB', 'TiB'):
+        if n < 1024:
+            return f'{n:.1f} {unit}'
+        n /= 1024
+    return f'{n:.1f} TiB'
 
-download_jobs: dict[str, dict] = {}
 
-# Regex to parse yt-dlp progress lines like:
-#   [download]  45.3% of   23.45MiB at   3.21MiB/s ETA 00:06
-PROGRESS_RE = re.compile(
-    r'\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\s*\S+)\s+at\s+(~?[\d.]+\s*\S+)\s+ETA\s+([\d:]+)'
-)
-
-def _build_ydlp_cmd(
+def _build_ydl_opts(
     output_template: str,
     download_mode: str,
     video_quality: str,
     audio_bitrate: str,
     threads: int,
-) -> list[str]:
-    """Build the yt-dlp CLI command list based on download options."""
-    cmd = [
-        "yt-dlp",
-        "--no-playlist",
-        "--newline",                           # one progress line per update
-        "--concurrent-fragments", str(threads),
-        "-o", output_template,
-    ]
+) -> dict:
+    """Build a yt-dlp YoutubeDL options dict based on the requested download mode."""
+    opts: dict = {
+        'quiet': True,
+        'no_warnings': True,
+        'noplaylist': True,
+        'outtmpl': output_template,
+        'concurrent_fragment_downloads': threads,
+        'noprogress': False,
+    }
 
     if os.path.exists(COOKIES_FILE):
-        cmd.extend(["--cookiefile", COOKIES_FILE])
+        opts['cookiefile'] = COOKIES_FILE
 
-    if download_mode == "audio":
-        cmd.extend([
-            "-f", "bestaudio/best",
-            "-x",
-            "--audio-format", "mp3",
-            "--audio-quality", f"{audio_bitrate}k",
-        ])
-    elif download_mode == "mute":
-        h = 99999 if video_quality == "max" else int(video_quality)
-        fs = "bestvideo/best" if h == 99999 else f"bestvideo[height<={h}]/best[height<={h}]/best"
-        cmd.extend(["-f", fs])
-    else:  # auto — video + audio merge with fallback for audio-only sources
-        h = 99999 if video_quality == "max" else int(video_quality)
-        if h == 99999:
-            fs = "bestvideo+bestaudio/bestaudio/best"
-        else:
-            fs = f"bestvideo[height<={h}]+bestaudio/bestvideo+bestaudio/bestaudio/best[height<={h}]/best"
-        cmd.extend(["-f", fs, "--merge-output-format", "mp4"])
+    if download_mode == 'audio':
+        opts['format'] = 'bestaudio/best'
+        opts['postprocessors'] = [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': audio_bitrate,
+        }]
+    elif download_mode == 'mute':
+        h = 99999 if video_quality == 'max' else int(video_quality)
+        opts['format'] = 'bestvideo/best' if h == 99999 else f'bestvideo[height<={h}]/best[height<={h}]/best'
+    else:  # auto — video + audio, fallback for audio-only sources
+        h = 99999 if video_quality == 'max' else int(video_quality)
+        opts['format'] = (
+            'bestvideo+bestaudio/bestaudio/best' if h == 99999
+            else f'bestvideo[height<={h}]+bestaudio/bestvideo+bestaudio/bestaudio/best[height<={h}]/best'
+        )
+        opts['merge_output_format'] = 'mp4'
 
-    return cmd
+    return opts
 
 
-async def stream_download(download_id: str, cmd: list[str], url: str, temp_dir: str) -> None:
+async def stream_download(download_id: str, ydl_opts: dict, url: str, temp_dir: str) -> None:
     """
-    Run yt-dlp as a subprocess and push parsed progress events to the job's queue.
-    Reads stderr line-by-line for real-time progress without blocking.
+    Run yt-dlp via its Python API in a thread executor and push structured
+    progress events to the job's asyncio queue in real-time.
+
+    Using the Python API with progress_hooks avoids all pipe-buffering issues
+    that arise when reading subprocess stdout/stderr.
     """
     job = download_jobs[download_id]
-    queue: asyncio.Queue = job["queue"]
+    queue: asyncio.Queue = job['queue']
+    loop = asyncio.get_event_loop()
+
+    def _push(event: dict) -> None:
+        """Thread-safe push to the asyncio queue."""
+        asyncio.run_coroutine_threadsafe(queue.put(event), loop)
+
+    def progress_hook(d: dict) -> None:
+        """Called by yt-dlp on every progress update (runs in the executor thread)."""
+        if d['status'] == 'downloading':
+            downloaded = d.get('downloaded_bytes') or 0
+            total      = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
+            speed      = d.get('speed') or 0
+            eta_s      = d.get('eta')
+
+            percent  = round(downloaded / total * 100, 1) if total > 0 else 0
+            eta_str  = f"{int(eta_s // 60)}:{int(eta_s % 60):02d}" if eta_s else ''
+
+            _push({
+                'type':    'progress',
+                'percent': percent,
+                'total':   _fmt_bytes(total),
+                'speed':   (_fmt_bytes(speed) + '/s') if speed else '',
+                'eta':     eta_str,
+            })
+
+        elif d['status'] == 'finished':
+            # Fragment/single-file download done — postprocessing may follow
+            _push({'type': 'status', 'phase': 'processing'})
+
+    def postprocessor_hook(d: dict) -> None:
+        """Called when a postprocessor (FFmpeg merge / audio extract) starts or finishes."""
+        if d['status'] == 'started':
+            pp = d.get('postprocessor', '')
+            if 'Merger' in pp:
+                _push({'type': 'status', 'phase': 'merging'})
+            elif 'Audio' in pp or 'Extract' in pp:
+                _push({'type': 'status', 'phase': 'converting'})
+
+    def run() -> None:
+        """Blocking download — runs in a thread pool executor."""
+        import yt_dlp as _yt  # import inside thread to pick up any runtime reloads
+        opts = {
+            **ydl_opts,
+            'progress_hooks':      [progress_hook],
+            'postprocessor_hooks': [postprocessor_hook],
+        }
+        with _yt.YoutubeDL(opts) as ydl:
+            ydl.download([url])
 
     try:
-        process = await asyncio.create_subprocess_exec(
-            *cmd, url,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE,
-        )
+        await loop.run_in_executor(None, run)
 
-        async for raw_line in process.stderr:
-            line = raw_line.decode("utf-8", errors="replace").strip()
-            if not line:
-                continue
-
-            m = PROGRESS_RE.search(line)
-            if m:
-                percent, total, speed, eta = m.groups()
-                downloaded_bytes = float(percent) / 100.0
-                await queue.put({
-                    "type": "progress",
-                    "percent": float(percent),
-                    "total": total,
-                    "speed": speed,
-                    "eta": eta,
-                })
-            elif "[Merger]" in line:
-                await queue.put({"type": "status", "phase": "merging"})
-            elif "[ExtractAudio]" in line:
-                await queue.put({"type": "status", "phase": "converting"})
-
-        await process.wait()
-
-        if process.returncode != 0:
-            job["status"] = "error"
-            await queue.put({"type": "error", "message": "yt-dlp selhal při stahování"})
+        files = [
+            f for f in os.listdir(temp_dir)
+            if not f.endswith('.part') and not f.endswith('.ytdl')
+        ]
+        if files:
+            filename = files[0]
+            job['filepath'] = os.path.join(temp_dir, filename)
+            job['filename'] = filename
+            job['status']   = 'done'
+            await queue.put({'type': 'done', 'filename': filename})
         else:
-            # Find the output file (ignore .part files)
-            files = [f for f in os.listdir(temp_dir) if not f.endswith(".part")]
-            if files:
-                filename = files[0]
-                job["filepath"] = os.path.join(temp_dir, filename)
-                job["filename"] = filename
-                job["status"] = "done"
-                await queue.put({"type": "done", "filename": filename})
-            else:
-                job["status"] = "error"
-                await queue.put({"type": "error", "message": "Soubor po stažení nenalezen"})
+            job['status'] = 'error'
+            await queue.put({'type': 'error', 'message': 'Soubor po stažení nenalezen'})
 
     except Exception as e:
         logger.exception(f"stream_download error for job {download_id}")
-        job["status"] = "error"
-        await queue.put({"type": "error", "message": str(e)})
+        job['status'] = 'error'
+        await queue.put({'type': 'error', 'message': str(e)})
     finally:
-        await queue.put(None)  # Sentinel — signals end of stream
+        await queue.put(None)  # Sentinel — signals end of SSE stream
+
 
 
 async def sse_event_generator(download_id: str) -> AsyncGenerator[str, None]:
@@ -425,7 +447,7 @@ async def start_download(
     os.makedirs(temp_dir, exist_ok=True)
 
     output_template = os.path.join(temp_dir, f"{clean_title}.%(ext)s")
-    cmd = _build_ydlp_cmd(output_template, download_mode, videoQuality, audioBitrate, threads)
+    ydl_opts = _build_ydl_opts(output_template, download_mode, videoQuality, audioBitrate, threads)
 
     download_jobs[download_id] = {
         "status": "running",
@@ -437,8 +459,8 @@ async def start_download(
         "created_at": time.time(),
     }
 
-    logger.info(f"Starting download job {download_id}: {' '.join(cmd)} {url}")
-    asyncio.create_task(stream_download(download_id, cmd, url, temp_dir))
+    logger.info(f"Starting download job {download_id} | mode={download_mode} quality={videoQuality} url={url}")
+    asyncio.create_task(stream_download(download_id, ydl_opts, url, temp_dir))
 
     return {"download_id": download_id, "title": clean_title}
 

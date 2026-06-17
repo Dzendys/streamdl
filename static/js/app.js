@@ -481,6 +481,7 @@ form.addEventListener('submit', async (e) => {
             resetBtn();
             statusPanel.style.display    = 'none';
             downloadManager.style.display = 'none';
+            lastUrl = ''; // Force info panel refresh on next URL input
         }, 3000);
 
     } catch (err) {
