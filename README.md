@@ -4,11 +4,11 @@ A lightweight media downloader and transcoder API powered by FastAPI, yt-dlp, an
 
 ## Description
 
-StreamDL is a web service that downloads, transcodes (MP3), and merges (MP4) video/audio from YouTube and other platforms on the fly, streaming the output directly to the client's browser.
+StreamDL is a web service that downloads, transcodes (MP3), and merges (MP4) video/audio from YouTube and other platforms to a temporary folder, streaming the finished file to the client's browser, followed by automatic cleanup.
 
 ## Key Features
 
-- **Piped Streaming:** Merges and transcodes media on the fly via FFmpeg directly to the user, saving server disk space.
+- **Temporary Storage & Auto-Cleanup:** Downloads, merges, and transcodes media to a customizable temporary folder on the server, serving the completed file and immediately deleting it afterward.
 - **Auto-Updates:** Automatically upgrades `yt-dlp` in the background upon extraction errors (with a 10-min cooldown) or manually via UI.
 - **Modern UI:** Responsive glassmorphic dark-theme frontend with progress bars, ETA, and download cancel buttons.
 - **Configurable:** Fully customizable via environment variables.
