@@ -281,7 +281,7 @@ async function fetchVideoInfo(url) {
                 if (hasAuto) {
                     autoSubtitlesGroup.style.display = 'block';
                     data.auto_subtitles.forEach(sub => {
-                        const row = createSubtitleRow(url, sub.code, sub.name, 'auto');
+                        const row = createSubtitleRow(url, sub.code, sub.name, sub.type);
                         autoSubtitlesList.appendChild(row);
                     });
                 }
@@ -310,7 +310,7 @@ function createSubtitleRow(url, lang, name, type) {
 
     const badge = document.createElement('span');
     badge.className = `subtitle-badge ${type}`;
-    badge.textContent = type === 'native' ? 'Originální' : 'Automatické';
+    badge.textContent = type === 'native' ? 'Originální' : (type === 'translate' ? 'Překlad' : 'Automatické');
 
     info.appendChild(langName);
     info.appendChild(badge);

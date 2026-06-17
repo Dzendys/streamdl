@@ -1130,15 +1130,16 @@ body::after {
 }
 
 .subtitle-badge.native {
+    background: rgba(var(--accent-rgb), 0.15);
+    color: var(--accent-primary);
+    border: 1px solid rgba(var(--accent-rgb), 0.2);
+}
+
+.subtitle-badge.auto,
+.subtitle-badge.translate {
     background: rgba(var(--accent-secondary-rgb), 0.15);
     color: var(--accent-secondary-light);
     border: 1px solid rgba(var(--accent-secondary-rgb), 0.2);
-}
-
-.subtitle-badge.auto {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-secondary);
-    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .subtitle-actions {
