@@ -238,11 +238,17 @@ def _build_ydl_opts(
 
     if download_mode == 'audio':
         opts['format'] = 'bestaudio/best'
-        opts['postprocessors'] = [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': audio_bitrate,
-        }]
+        opts['writethumbnail'] = True
+        opts['postprocessors'] = [
+            {
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': audio_bitrate,
+            },
+            {
+                'key': 'EmbedThumbnail',
+            }
+        ]
     elif download_mode == 'mute':
         h = 99999 if video_quality == 'max' else int(video_quality)
         opts['format'] = 'bestvideo/best' if h == 99999 else f'bestvideo[height<={h}]/best[height<={h}]/best'
@@ -322,7 +328,7 @@ async def stream_download(download_id: str, ydl_opts: dict, url: str, temp_dir: 
 
         files = [
             f for f in os.listdir(temp_dir)
-            if not f.endswith('.part') and not f.endswith('.ytdl')
+            if f.endswith(('.mp3', '.mp4', '.mkv', '.webm', '.m4a'))
         ]
         if files:
             filename = files[0]
