@@ -2,15 +2,16 @@
     --bg-primary: #030303;
     --bg-secondary: #0a0a0f;
     --bg-tertiary: #12121c;
+    --accent-rgb: 168, 85, 247;
     --accent-primary: #a855f7;
     --accent-secondary: #6366f1;
     --accent-gradient: linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #6366f1 100%);
-    --accent-glow: rgba(168, 85, 247, 0.4);
+    --accent-glow: rgba(var(--accent-rgb), 0.4);
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    --border: rgba(168, 85, 247, 0.15);
-    --border-hover: rgba(168, 85, 247, 0.4);
+    --border: rgba(var(--accent-rgb), 0.15);
+    --border-hover: rgba(var(--accent-rgb), 0.4);
     --card-bg: rgba(10, 10, 15, 0.7);
 }
 
@@ -93,7 +94,7 @@ body::after {
     background: var(--accent-gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.2));
+    filter: drop-shadow(0 0 15px rgba(var(--accent-rgb), 0.2));
 }
 
 .subtitle {
@@ -115,7 +116,7 @@ body::after {
 
 .card:hover {
     border-color: var(--border-hover);
-    box-shadow: 0 30px 60px rgba(168, 85, 247, 0.04), 0 0 80px rgba(168, 85, 247, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: 0 30px 60px rgba(var(--accent-rgb), 0.04), 0 0 80px rgba(var(--accent-rgb), 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .input-wrapper {
@@ -149,7 +150,7 @@ body::after {
 
 .input-wrapper input:focus {
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.15), inset 0 2px 4px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.15), inset 0 2px 4px rgba(0, 0, 0, 0.8);
     background-color: rgba(5, 5, 8, 0.95);
 }
 
@@ -163,13 +164,13 @@ body::after {
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    background: rgba(168, 85, 247, 0.15);
-    border: 1px solid rgba(168, 85, 247, 0.3);
+    background: rgba(var(--accent-rgb), 0.15);
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
     border-radius: 10px;
     padding: 0.25rem 0.6rem;
     font-size: 0.75rem;
     font-weight: 600;
-    color: #c084fc;
+    color: var(--accent-primary);
     pointer-events: none;
     opacity: 0;
     transform: scale(0.9);
@@ -228,22 +229,22 @@ body::after {
 }
 
 .mode-card:hover {
-    border-color: rgba(168, 85, 247, 0.5);
+    border-color: rgba(var(--accent-rgb), 0.5);
     background-color: rgba(26, 26, 38, 0.6);
     transform: translateY(-1px);
 }
 
 .mode-card.active {
     border-color: var(--accent-primary);
-    background-color: rgba(168, 85, 247, 0.08);
-    box-shadow: 0 0 20px rgba(168, 85, 247, 0.1);
+    background-color: rgba(var(--accent-rgb), 0.08);
+    box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.1);
 }
 
 .mode-icon-box {
     width: 3rem;
     height: 3rem;
     border-radius: 12px;
-    background-color: rgba(168, 85, 247, 0.1);
+    background-color: rgba(var(--accent-rgb), 0.1);
     color: var(--text-secondary);
     display: flex;
     align-items: center;
@@ -337,13 +338,13 @@ body::after {
 }
 
 .quality-card:hover {
-    border-color: rgba(168, 85, 247, 0.4);
+    border-color: rgba(var(--accent-rgb), 0.4);
     background-color: rgba(26, 26, 38, 0.6);
 }
 
 .quality-card.active {
     border-color: var(--accent-primary);
-    background-color: rgba(168, 85, 247, 0.08);
+    background-color: rgba(var(--accent-rgb), 0.08);
 }
 
 .quality-header {
@@ -399,12 +400,12 @@ body::after {
     justify-content: center;
     align-items: center;
     gap: 0.75rem;
-    box-shadow: 0 4px 20px rgba(168, 85, 247, 0.35);
+    box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.35);
 }
 
 .btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(168, 85, 247, 0.5);
+    box-shadow: 0 8px 30px rgba(var(--accent-rgb), 0.5);
     filter: brightness(1.08);
 }
 
@@ -486,7 +487,7 @@ body::after {
 
 .paste-btn:hover {
     background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(168, 85, 247, 0.3);
+    border-color: rgba(var(--accent-rgb), 0.3);
 }
 
 /* Responsive styling */
@@ -746,10 +747,10 @@ body::after {
 }
 
 .audio-only-badge {
-    background-color: rgba(168, 85, 247, 0.12);
-    border: 1px solid rgba(168, 85, 247, 0.3);
+    background-color: rgba(var(--accent-rgb), 0.12);
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
     border-radius: 6px;
-    color: #c084fc;
+    color: var(--accent-primary);
     padding: 0.2rem 0.5rem;
     font-size: 0.7rem;
     font-weight: 700;
@@ -907,39 +908,43 @@ body::after {
 
 /* ── Theme Switcher ─────────────────────────────────────────────────────── */
 [data-accent="purple"] {
+    --accent-rgb: 168, 85, 247;
     --accent-primary: #a855f7;
     --accent-secondary: #6366f1;
     --accent-gradient: linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #6366f1 100%);
-    --accent-glow: rgba(168, 85, 247, 0.4);
-    --border: rgba(168, 85, 247, 0.15);
-    --border-hover: rgba(168, 85, 247, 0.4);
+    --accent-glow: rgba(var(--accent-rgb), 0.4);
+    --border: rgba(var(--accent-rgb), 0.15);
+    --border-hover: rgba(var(--accent-rgb), 0.4);
 }
 
 [data-accent="blue"] {
+    --accent-rgb: 59, 130, 246;
     --accent-primary: #3b82f6;
     --accent-secondary: #06b6d4;
     --accent-gradient: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #06b6d4 100%);
-    --accent-glow: rgba(59, 130, 246, 0.4);
-    --border: rgba(59, 130, 246, 0.15);
-    --border-hover: rgba(59, 130, 246, 0.4);
+    --accent-glow: rgba(var(--accent-rgb), 0.4);
+    --border: rgba(var(--accent-rgb), 0.15);
+    --border-hover: rgba(var(--accent-rgb), 0.4);
 }
 
 [data-accent="green"] {
+    --accent-rgb: 16, 185, 129;
     --accent-primary: #10b981;
     --accent-secondary: #14b8a6;
     --accent-gradient: linear-gradient(135deg, #34d399 0%, #10b981 50%, #14b8a6 100%);
-    --accent-glow: rgba(16, 185, 129, 0.4);
-    --border: rgba(16, 185, 129, 0.15);
-    --border-hover: rgba(16, 185, 129, 0.4);
+    --accent-glow: rgba(var(--accent-rgb), 0.4);
+    --border: rgba(var(--accent-rgb), 0.15);
+    --border-hover: rgba(var(--accent-rgb), 0.4);
 }
 
 [data-accent="orange"] {
+    --accent-rgb: 249, 115, 22;
     --accent-primary: #f97316;
     --accent-secondary: #fbbf24;
     --accent-gradient: linear-gradient(135deg, #fb923c 0%, #f97316 50%, #fbbf24 100%);
-    --accent-glow: rgba(249, 115, 22, 0.4);
-    --border: rgba(249, 115, 22, 0.15);
-    --border-hover: rgba(249, 115, 22, 0.4);
+    --accent-glow: rgba(var(--accent-rgb), 0.4);
+    --border: rgba(var(--accent-rgb), 0.15);
+    --border-hover: rgba(var(--accent-rgb), 0.4);
 }
 
 .accent-switcher {
