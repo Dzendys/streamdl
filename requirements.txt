@@ -4,3 +4,4 @@ yt-dlp
 httpx
 jinja2
 python-multipart
+youtube-transcript-api

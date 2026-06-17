@@ -149,8 +149,10 @@ async function fetchVideoInfo(url) {
 
     const infoSkeleton = document.getElementById('infoSkeleton');
     const infoPanel    = document.getElementById('infoPanel');
+    const subtitlesSection = document.getElementById('subtitlesSection');
     infoSkeleton.style.display = 'flex';
     infoPanel.style.display    = 'none';
+    if (subtitlesSection) subtitlesSection.style.display = 'none';
 
     try {
         const formData = new FormData();
@@ -248,6 +250,44 @@ async function fetchVideoInfo(url) {
             }
         }
 
+        // Subtitles handling
+        const subtitlesSection     = document.getElementById('subtitlesSection');
+        const nativeSubtitlesGroup = document.getElementById('nativeSubtitlesGroup');
+        const nativeSubtitlesList  = document.getElementById('nativeSubtitlesList');
+        const autoSubtitlesGroup   = document.getElementById('autoSubtitlesGroup');
+        const autoSubtitlesList    = document.getElementById('autoSubtitlesList');
+
+        if (subtitlesSection) {
+            subtitlesSection.style.display = 'none';
+            nativeSubtitlesGroup.style.display = 'none';
+            nativeSubtitlesList.innerHTML = '';
+            autoSubtitlesGroup.style.display = 'none';
+            autoSubtitlesList.innerHTML = '';
+
+            const hasNative = data.subtitles && data.subtitles.length > 0;
+            const hasAuto   = data.auto_subtitles && data.auto_subtitles.length > 0;
+
+            if (hasNative || hasAuto) {
+                subtitlesSection.style.display = 'block';
+
+                if (hasNative) {
+                    nativeSubtitlesGroup.style.display = 'block';
+                    data.subtitles.forEach(sub => {
+                        const row = createSubtitleRow(url, sub.code, sub.name, 'native');
+                        nativeSubtitlesList.appendChild(row);
+                    });
+                }
+
+                if (hasAuto) {
+                    autoSubtitlesGroup.style.display = 'block';
+                    data.auto_subtitles.forEach(sub => {
+                        const row = createSubtitleRow(url, sub.code, sub.name, 'auto');
+                        autoSubtitlesList.appendChild(row);
+                    });
+                }
+            }
+        }
+
         infoSkeleton.style.display = 'none';
         infoPanel.style.display    = 'flex';
     } catch (err) {
@@ -255,6 +295,54 @@ async function fetchVideoInfo(url) {
         infoSkeleton.style.display = 'none';
         infoPanel.style.display    = 'none';
     }
+}
+
+function createSubtitleRow(url, lang, name, type) {
+    const row = document.createElement('div');
+    row.className = 'subtitle-row';
+
+    const info = document.createElement('div');
+    info.className = 'subtitle-info';
+
+    const langName = document.createElement('span');
+    langName.className = 'subtitle-lang';
+    langName.textContent = name;
+
+    const badge = document.createElement('span');
+    badge.className = `subtitle-badge ${type}`;
+    badge.textContent = type === 'native' ? 'Originální' : 'Automatické';
+
+    info.appendChild(langName);
+    info.appendChild(badge);
+
+    const actions = document.createElement('div');
+    actions.className = 'subtitle-actions';
+
+    const srtBtn = document.createElement('button');
+    srtBtn.type = 'button';
+    srtBtn.className = 'sub-download-btn';
+    srtBtn.textContent = 'SRT';
+    srtBtn.onclick = () => {
+        const downloadUrl = `/api/subtitles?url=${encodeURIComponent(url)}&lang=${lang}&type=${type}&format=srt`;
+        window.open(downloadUrl, '_blank');
+    };
+
+    const vttBtn = document.createElement('button');
+    vttBtn.type = 'button';
+    vttBtn.className = 'sub-download-btn';
+    vttBtn.textContent = 'VTT';
+    vttBtn.onclick = () => {
+        const downloadUrl = `/api/subtitles?url=${encodeURIComponent(url)}&lang=${lang}&type=${type}&format=vtt`;
+        window.open(downloadUrl, '_blank');
+    };
+
+    actions.appendChild(srtBtn);
+    actions.appendChild(vttBtn);
+
+    row.appendChild(info);
+    row.appendChild(actions);
+
+    return row;
 }
 
 // ── Form Submission — two-phase SSE download with real-time progress ───────

@@ -1053,3 +1053,114 @@ body::after {
 .accent-dot.blue { background-color: #3b82f6; }
 .accent-dot.green { background-color: #10b981; }
 .accent-dot.orange { background-color: #f97316; }
+
+/* ── Subtitles Section ─────────────────────────────────────────────────── */
+.subtitles-section {
+    margin-top: 1.5rem;
+    margin-bottom: 2rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.subtitles-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.25rem;
+}
+
+.subtitles-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sub-group-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.subtitles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.subtitle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    transition: all 0.25s ease;
+}
+
+.subtitle-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--border-hover);
+}
+
+.subtitle-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.subtitle-lang {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.subtitle-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.subtitle-badge.native {
+    background: rgba(var(--accent-secondary-rgb), 0.15);
+    color: var(--accent-secondary-light);
+    border: 1px solid rgba(var(--accent-secondary-rgb), 0.2);
+}
+
+.subtitle-badge.auto {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.subtitle-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.sub-download-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sub-download-btn:hover {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: #ffffff;
+    box-shadow: 0 0 10px var(--accent-glow);
+}

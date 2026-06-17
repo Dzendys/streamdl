@@ -144,6 +144,56 @@ async def trigger_auto_update_on_failure() -> None:
 # Metadata helpers
 # ---------------------------------------------------------------------------
 
+LANG_MAP = {
+    'cs': 'Čeština',
+    'en': 'Angličtina',
+    'sk': 'Slovenština',
+    'de': 'Němčina',
+    'fr': 'Francouzština',
+    'es': 'Španělština',
+    'it': 'Italština',
+    'pl': 'Polština',
+    'ru': 'Ruština',
+    'ja': 'Japonština',
+    'zh': 'Čínština',
+    'ko': 'Korejština',
+    'uk': 'Ukrajinština',
+}
+
+def format_srt(transcript: list[dict]) -> str:
+    """Format transcript segments into standard SRT subtitle format."""
+    srt = []
+    for i, entry in enumerate(transcript, 1):
+        start = entry['start']
+        end = start + entry['duration']
+        
+        def format_time(seconds):
+            h = int(seconds // 3600)
+            m = int((seconds % 3600) // 60)
+            s = int(seconds % 60)
+            ms = int((seconds % 1) * 1000)
+            return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+            
+        srt.append(f"{i}\n{format_time(start)} --> {format_time(end)}\n{entry['text']}")
+    return "\n\n".join(srt) + "\n"
+
+def format_vtt(transcript: list[dict]) -> str:
+    """Format transcript segments into standard WEBVTT subtitle format."""
+    vtt = ["WEBVTT\n"]
+    for i, entry in enumerate(transcript, 1):
+        start = entry['start']
+        end = start + entry['duration']
+        
+        def format_time(seconds):
+            h = int(seconds // 3600)
+            m = int((seconds % 3600) // 60)
+            s = int(seconds % 60)
+            ms = int((seconds % 1) * 1000)
+            return f"{h:02d}:{m:02d}:{s:02d}.{ms:03d}"
+            
+        vtt.append(f"{i}\n{format_time(start)} --> {format_time(end)}\n{entry['text']}")
+    return "\n\n".join(vtt) + "\n"
+
 def format_duration(duration: float | None) -> str:
     """Format duration in seconds to H:MM:SS or M:SS."""
     if not duration:
@@ -437,6 +487,52 @@ async def get_video_info(url: str = Form(...)):
     if has_video:
         max_height = max((f.get("height") or 0) for f in formats if _has_real_video(f))
 
+    # Extract subtitles information using youtube-transcript-api
+    subtitles = []
+    auto_subtitles = []
+    
+    match = re.search(r'(?:v=|\/)([\w-]{11})(?:\?|&|$|/)', url)
+    if match:
+        video_id = match.group(1)
+        try:
+            from youtube_transcript_api import YouTubeTranscriptApi
+            api = YouTubeTranscriptApi()
+            transcript_list = api.list(video_id)
+            
+            for t in transcript_list:
+                if not t.is_generated:
+                    subtitles.append({
+                        "code": t.language_code,
+                        "name": LANG_MAP.get(t.language_code, t.language),
+                        "type": "native"
+                    })
+                else:
+                    if t.language_code in LANG_MAP:
+                        auto_subtitles.append({
+                            "code": t.language_code,
+                            "name": LANG_MAP[t.language_code],
+                            "type": "auto"
+                        })
+            
+            # Offer auto-translation to cs/en if they aren't already present
+            has_cs = any(s['code'] == 'cs' for s in subtitles) or any(s['code'] == 'cs' for s in auto_subtitles)
+            has_en = any(s['code'] == 'en' for s in subtitles) or any(s['code'] == 'en' for s in auto_subtitles)
+            
+            if not has_cs:
+                auto_subtitles.append({
+                    "code": "cs",
+                    "name": "Čeština (automatický překlad)",
+                    "type": "translate"
+                })
+            if not has_en:
+                auto_subtitles.append({
+                    "code": "en",
+                    "name": "Angličtina (automatický překlad)",
+                    "type": "translate"
+                })
+        except Exception as e:
+            logger.info(f"Could not load transcripts for {video_id}: {e}")
+
     return {
         "title": title,
         "thumbnail": thumbnail,
@@ -445,7 +541,87 @@ async def get_video_info(url: str = Form(...)):
         "sizes": sizes,
         "has_video": has_video,
         "max_height": max_height,
+        "subtitles": subtitles,
+        "auto_subtitles": auto_subtitles,
     }
+
+
+@app.get("/api/subtitles")
+async def download_subtitles(url: str, lang: str, type: str, format: str):
+    """Download and format subtitles for a YouTube video on the fly."""
+    if not url or not lang:
+        raise HTTPException(status_code=400, detail="Missing required parameters")
+    
+    if format not in ["srt", "vtt"]:
+        raise HTTPException(status_code=400, detail="Invalid format. Supported: srt, vtt")
+        
+    match = re.search(r'(?:v=|\/)([\w-]{11})(?:\?|&|$|/)', url)
+    if not match:
+        raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+    video_id = match.group(1)
+    
+    video_title = "titulky"
+    try:
+        info = await extract_metadata(url)
+        video_title = info.get("title", "titulky")
+        video_title = re.sub(r'[\\/*?:"<>|]', "", video_title)
+        video_title = video_title.replace(" ", "_")
+    except Exception:
+        pass
+        
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        api = YouTubeTranscriptApi()
+        transcript_list = api.list(video_id)
+        
+        transcript_obj = None
+        
+        if type in ["native", "auto"]:
+            try:
+                transcript_obj = transcript_list.find_transcript([lang])
+            except Exception:
+                pass
+                
+        if not transcript_obj:
+            try:
+                first_t = next(iter(transcript_list))
+                transcript_obj = first_t.translate(lang)
+            except Exception as te:
+                raise HTTPException(status_code=404, detail=f"Nelze přeložit titulky do jazyka {lang}: {str(te)}")
+                
+        transcript_data = transcript_obj.fetch()
+        
+        import html
+        cleaned_data = []
+        for entry in transcript_data:
+            text = html.unescape(entry['text'])
+            text = re.sub(r'<[^>]+>', '', text)
+            cleaned_data.append({
+                'text': text,
+                'start': entry['start'],
+                'duration': entry['duration']
+            })
+            
+        if format == "srt":
+            content = format_srt(cleaned_data)
+            media_type = "application/x-subrip"
+            filename = f"{video_title}.{lang}.srt"
+        else:
+            content = format_vtt(cleaned_data)
+            media_type = "text/vtt"
+            filename = f"{video_title}.{lang}.vtt"
+            
+        from fastapi.responses import Response
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"attachment; filename=\"{filename}\""
+            }
+        )
+    except Exception as e:
+        logger.exception("Failed to download subtitles")
+        raise HTTPException(status_code=500, detail=f"Chyba při stahování titulků: {str(e)}")
 
 
 @app.post("/api/download/start")
