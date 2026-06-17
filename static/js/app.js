@@ -563,3 +563,32 @@ if (concurrencyRange && concurrencyValue && hiddenConcurrency) {
 
 // ── Init ───────────────────────────────────────────────────────────────────
 loadYtdlpVersion();
+
+// ── Theme Switcher ─────────────────────────────────────────────────────────
+const initAccentSwitcher = () => {
+    const dots = document.querySelectorAll('.accent-dot');
+    const savedAccent = localStorage.getItem('streamdl-accent') || 'purple';
+
+    const setAccent = (accent) => {
+        document.body.setAttribute('data-accent', accent);
+        localStorage.setItem('streamdl-accent', accent);
+        dots.forEach(dot => {
+            if (dot.getAttribute('data-accent') === accent) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        });
+    };
+
+    dots.forEach(dot => {
+        dot.addEventListener('click', () => {
+            const accent = dot.getAttribute('data-accent');
+            setAccent(accent);
+        });
+    });
+
+    setAccent(savedAccent);
+};
+
+initAccentSwitcher();

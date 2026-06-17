@@ -904,3 +904,80 @@ body::after {
     font-weight: 500;
     margin-top: 0.25rem;
 }
+
+/* ── Theme Switcher ─────────────────────────────────────────────────────── */
+[data-accent="purple"] {
+    --accent-primary: #a855f7;
+    --accent-secondary: #6366f1;
+    --accent-gradient: linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #6366f1 100%);
+    --accent-glow: rgba(168, 85, 247, 0.4);
+    --border: rgba(168, 85, 247, 0.15);
+    --border-hover: rgba(168, 85, 247, 0.4);
+}
+
+[data-accent="blue"] {
+    --accent-primary: #3b82f6;
+    --accent-secondary: #06b6d4;
+    --accent-gradient: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #06b6d4 100%);
+    --accent-glow: rgba(59, 130, 246, 0.4);
+    --border: rgba(59, 130, 246, 0.15);
+    --border-hover: rgba(59, 130, 246, 0.4);
+}
+
+[data-accent="green"] {
+    --accent-primary: #10b981;
+    --accent-secondary: #14b8a6;
+    --accent-gradient: linear-gradient(135deg, #34d399 0%, #10b981 50%, #14b8a6 100%);
+    --accent-glow: rgba(16, 185, 129, 0.4);
+    --border: rgba(16, 185, 129, 0.15);
+    --border-hover: rgba(16, 185, 129, 0.4);
+}
+
+[data-accent="orange"] {
+    --accent-primary: #f97316;
+    --accent-secondary: #fbbf24;
+    --accent-gradient: linear-gradient(135deg, #fb923c 0%, #f97316 50%, #fbbf24 100%);
+    --accent-glow: rgba(249, 115, 22, 0.4);
+    --border: rgba(249, 115, 22, 0.15);
+    --border-hover: rgba(249, 115, 22, 0.4);
+}
+
+.accent-switcher {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(10, 10, 15, 0.4);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    z-index: 100;
+}
+
+.accent-dot {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s;
+    background: transparent;
+    padding: 0;
+}
+
+.accent-dot:hover {
+    transform: scale(1.15);
+}
+
+.accent-dot.active {
+    border-color: #ffffff;
+    transform: scale(1.1);
+}
+
+.accent-dot.purple { background-color: #a855f7; }
+.accent-dot.blue { background-color: #3b82f6; }
+.accent-dot.green { background-color: #10b981; }
+.accent-dot.orange { background-color: #f97316; }
