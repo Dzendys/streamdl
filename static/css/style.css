@@ -973,13 +973,14 @@ body::after {
     justify-content: center;
     width: 1.5rem;
     height: 1.5rem;
-    color: var(--text-secondary);
-    transition: color 0.25s ease, transform 0.25s ease;
+    color: var(--accent-primary);
+    filter: drop-shadow(0 0 5px var(--accent-glow));
+    transition: transform 0.25s ease, filter 0.25s ease;
 }
 
 .accent-switcher:hover .accent-palette-icon {
-    color: var(--accent-primary);
     transform: rotate(-15deg) scale(1.05);
+    filter: drop-shadow(0 0 8px var(--accent-glow));
 }
 
 .accent-dots-container {
