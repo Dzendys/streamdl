@@ -28,10 +28,30 @@ python app.py
 App runs at `http://localhost:8080`.
 
 ### Docker Deployment (Recommended)
+
+Start the container in detached mode:
 ```bash
 docker compose up --build -d
 ```
-App maps to port `8082`. Stop with `docker compose down`.
+App maps to host port `8082`. Stop with `docker compose down`.
+
+Example `docker-compose.yml`:
+```yaml
+services:
+  streamdl:
+    build: .
+    container_name: streamdl
+    ports:
+      - "8082:8080"
+    environment:
+      - PORT=8080
+      - HOST=0.0.0.0
+      - YTDLP_COOLDOWN=600
+      - COOKIES_FILE=cookies.txt
+      - TEMP_DIR=temp_downloads
+      - MAX_STREAM_TIMEOUT=60.0
+    restart: unless-stopped
+```
 
 ## Configuration (Environment Variables)
 
