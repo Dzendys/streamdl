@@ -162,6 +162,9 @@ def _has_real_video(f: dict) -> bool:
 # Simple in-memory cache for metadata (valid for 5 minutes)
 metadata_cache: dict[str, tuple[float, dict]] = {}
 
+# Dictionary to store active download jobs
+download_jobs: dict = {}
+
 async def extract_metadata(url: str) -> dict:
     """Fetch video info using yt-dlp with in-memory caching."""
     now = time.time()
