@@ -1,10 +1,10 @@
-# StreamyDL
+# StreamDL
 
 A professional streaming proxy and media downloader powered by FastAPI, yt-dlp, and FFmpeg.
 
 ## Description
 
-StreamyDL is a lightweight web application and API service designed to download and transcode multimedia content (video and audio) from hundreds of supported platforms (e.g., YouTube, SoundCloud, TikTok, Vimeo). The entire solution operates as a pass-through proxy: all media data is piped directly through memory to the user's browser in real-time, without writing any temporary files to the server's disk storage.
+StreamDL is a lightweight web application and API service designed to download and transcode multimedia content (video and audio) from hundreds of supported platforms (e.g., YouTube, SoundCloud, TikTok, Vimeo). The entire solution operates as a pass-through proxy: all media data is piped directly through memory to the user's browser in real-time, without writing any temporary files to the server's disk storage.
 
 ## Key Features & Advantages
 

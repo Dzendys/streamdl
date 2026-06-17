@@ -17,7 +17,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
-logger = logging.getLogger("streamydl")
+logger = logging.getLogger("streamdl")
 
 # Load Configuration from Environment Variables
 PORT = int(os.getenv("PORT", "8080"))
@@ -26,7 +26,7 @@ YTDLP_COOLDOWN = int(os.getenv("YTDLP_COOLDOWN", "600"))
 COOKIES_FILE = os.getenv("COOKIES_FILE", "cookies.txt")
 MAX_STREAM_TIMEOUT = float(os.getenv("MAX_STREAM_TIMEOUT", "60.0"))
 
-app = FastAPI(title="StreamyDL API")
+app = FastAPI(title="StreamDL API")
 
 # Ensure required directories exist and mount static files
 os.makedirs("templates", exist_ok=True)
