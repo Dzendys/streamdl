@@ -4,11 +4,12 @@ import urllib.parse
 import sys
 import time
 import logging
-from fastapi import FastAPI, Request, HTTPException, Form
-from fastapi.responses import StreamingResponse, HTMLResponse
+import uuid
+import shutil
+from fastapi import FastAPI, Request, HTTPException, Form, BackgroundTasks
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-import httpx
 import yt_dlp
 import uvicorn
 
@@ -24,7 +25,6 @@ PORT = int(os.getenv("PORT", "8080"))
 HOST = os.getenv("HOST", "0.0.0.0")
 YTDLP_COOLDOWN = int(os.getenv("YTDLP_COOLDOWN", "600"))
 COOKIES_FILE = os.getenv("COOKIES_FILE", "cookies.txt")
-MAX_STREAM_TIMEOUT = float(os.getenv("MAX_STREAM_TIMEOUT", "60.0"))
 
 app = FastAPI(title="StreamDL API")
 
@@ -35,6 +35,29 @@ os.makedirs("static/js", exist_ok=True)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+# Helper functions for disk cleanup
+
+def cleanup_temp_dir(directory_path: str):
+    """Delete a temporary download directory and all its contents."""
+    try:
+        if os.path.exists(directory_path):
+            shutil.rmtree(directory_path)
+            logger.info(f"Successfully cleaned up temp directory: {directory_path}")
+    except Exception as e:
+        logger.error(f"Failed to cleanup temp directory {directory_path}: {e}")
+
+@app.on_event("startup")
+def cleanup_on_startup():
+    """Clean up any leftover files in temp_downloads folder on system startup."""
+    temp_dir = "temp_downloads"
+    if os.path.exists(temp_dir):
+        logger.info("Cleaning up leftover temporary downloads on startup...")
+        try:
+            shutil.rmtree(temp_dir)
+            logger.info("Temporary downloads folder cleaned successfully.")
+        except Exception as e:
+            logger.error(f"Failed to cleanup temp_downloads on startup: {e}")
 
 # Auto-update state tracking for yt-dlp
 last_update_time = 0.0
@@ -135,12 +158,27 @@ def estimate_sizes(formats: list[dict], duration: float | None) -> dict[str, int
     sizes["audio"] = audio_size
     return sizes
 
+# Simple in-memory cache for metadata to avoid duplicate requests
+metadata_cache = {}
+
 async def extract_metadata(url: str) -> dict:
-    """Fetch video info and format mappings using yt-dlp."""
+    """Fetch video info and format mappings using yt-dlp with in-memory caching."""
+    # Check cache first (valid for 5 minutes / 300 seconds)
+    now = time.time()
+    if url in metadata_cache:
+        cached_time, data = metadata_cache[url]
+        if now - cached_time < 300:
+            logger.info(f"Serving metadata from cache for URL: {url}")
+            return data
+
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
         'noplaylist': True,
+        'check_formats': False,  # Disable HEAD requests to verify format URLs (massive speedup)
+        'youtube_include_dash_manifest': False,  # Skip slow DASH manifest queries
+        'youtube_include_hls_manifest': False,   # Skip slow HLS manifest queries
+        'remote_components': {'ejs:github'},    # Allow challenge solver script downloading to prevent YouTube throttling
     }
     if os.path.exists(COOKIES_FILE):
         ydl_opts['cookiefile'] = COOKIES_FILE
@@ -151,65 +189,14 @@ async def extract_metadata(url: str) -> dict:
             return ydl.extract_info(url, download=False)
 
     try:
-        return await loop.run_in_executor(None, extract)
+        data = await loop.run_in_executor(None, extract)
+        # Store metadata in cache
+        metadata_cache[url] = (time.time(), data)
+        return data
     except Exception as e:
         logger.exception(f"yt-dlp failed to extract metadata for url: {url}")
         asyncio.create_task(trigger_auto_update_on_failure())
         raise HTTPException(status_code=400, detail=f"Chyba yt-dlp: {str(e)}")
-
-# Realtime Streaming Generators
-
-async def ffmpeg_audio_generator(process: asyncio.subprocess.Process):
-    """Yield transcoded audio chunks from ffmpeg stdout and ensure process cleanup."""
-    try:
-        while True:
-            chunk = await process.stdout.read(65536)
-            if not chunk:
-                break
-            yield chunk
-    except asyncio.CancelledError:
-        logger.info("ffmpeg audio stream cancelled by client.")
-        raise
-    finally:
-        if process.returncode is None:
-            try:
-                process.kill()
-            except Exception:
-                pass
-            await process.wait()
-
-async def ffmpeg_merge_generator(process: asyncio.subprocess.Process):
-    """Yield merged mp4 chunks from ffmpeg stdout and ensure process cleanup."""
-    try:
-        while True:
-            chunk = await process.stdout.read(65536)
-            if not chunk:
-                break
-            yield chunk
-    except asyncio.CancelledError:
-        logger.info("ffmpeg video+audio merge stream cancelled by client.")
-        raise
-    finally:
-        if process.returncode is None:
-            try:
-                process.kill()
-            except Exception:
-                pass
-            await process.wait()
-
-async def httpx_stream_generator(stream_url: str):
-    """Yield raw stream bytes directly from remote stream URL using HTTPX client."""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    try:
-        async with httpx.AsyncClient(timeout=MAX_STREAM_TIMEOUT) as client:
-            async with client.stream("GET", stream_url, headers=headers) as r:
-                async for chunk in r.aiter_bytes(chunk_size=65536):
-                    yield chunk
-    except asyncio.CancelledError:
-        logger.info("Direct HTTP stream cancelled by client.")
-        raise
 
 
 # API Endpoints
@@ -268,12 +255,13 @@ async def get_video_info(url: str = Form(...)):
 
 @app.post("/api/download")
 async def download_video(
+    background_tasks: BackgroundTasks,
     url: str = Form(...),
     downloadMode: str = Form("auto"),
     videoQuality: str = Form("1080"),
     audioBitrate: str = Form("320")
 ):
-    """Stream media file directly through memory proxy, transcoding or merging on the fly."""
+    """Download media using yt-dlp to a temporary folder, then stream it via FileResponse and clean up."""
     if not url:
         raise HTTPException(status_code=400, detail="URL je vyžadována")
 
@@ -297,141 +285,112 @@ async def download_video(
         elif download_mode == "auto":
             download_mode = "audio"
 
-    audio_url = None
-    video_url = None
-    filesize = None
-    selected_ext = "mp4"
+    # Create a unique temporary directory
+    download_id = str(uuid.uuid4())
+    temp_dir = os.path.join("temp_downloads", download_id)
+    os.makedirs(temp_dir, exist_ok=True)
 
+    # Use %(ext)s so yt-dlp and ffmpeg can resolve final extension automatically
+    output_template = os.path.join(temp_dir, f"{clean_title}.%(ext)s")
+
+    cmd = [
+        "yt-dlp",
+        "--no-playlist",
+        "--concurrent-fragments", "5",
+        "-o", output_template
+    ]
+
+    if os.path.exists(COOKIES_FILE):
+        cmd.extend(["--cookiefile", COOKIES_FILE])
+
+    # Configure modes
     if download_mode == "audio":
-        audio_only_formats = [f for f in formats if f.get("acodec") and f.get("acodec") != "none" and f.get("vcodec") == "none"]
-        if not audio_only_formats:
-            audio_only_formats = [f for f in formats if f.get("acodec") and f.get("acodec") != "none"]
-        
-        if audio_only_formats:
-            audio_only_formats.sort(key=lambda x: x.get("abr") or x.get("filesize") or x.get("filesize_approx") or 0, reverse=True)
-            best_audio = audio_only_formats[0]
-            audio_url = best_audio.get("url")
-            filesize = best_audio.get("filesize") or best_audio.get("filesize_approx")
-        else:
-            audio_url = info.get("url")
-            filesize = info.get("filesize") or info.get("filesize_approx")
-
+        cmd.extend([
+            "-f", "bestaudio/best",
+            "-x",
+            "--audio-format", "mp3",
+            "--audio-quality", f"{audioBitrate}k"
+        ])
     elif download_mode == "mute":
         height_limit = 99999 if videoQuality == "max" else int(videoQuality)
-        video_only_formats = [f for f in formats if f.get("vcodec") and f.get("vcodec") != "none" and (f.get("height") or 0) <= height_limit]
-        if video_only_formats:
-            video_only_formats.sort(key=lambda x: (x.get("height") or 0, x.get("filesize") or x.get("filesize_approx") or 0), reverse=True)
-            best_video = video_only_formats[0]
-            video_url = best_video.get("url")
-            filesize = best_video.get("filesize") or best_video.get("filesize_approx")
-            selected_ext = best_video.get("ext", "mp4")
+        if height_limit == 99999:
+            format_spec = "bestvideo/best"
         else:
-            video_url = info.get("url")
-            filesize = info.get("filesize") or info.get("filesize_approx")
-            selected_ext = info.get("ext", "mp4")
-
+            format_spec = f"bestvideo[height<={height_limit}]/best[height<={height_limit}]"
+        cmd.extend(["-f", format_spec])
     else: # auto mode (video + audio merging)
         height_limit = 99999 if videoQuality == "max" else int(videoQuality)
-        video_formats = [f for f in formats if f.get("vcodec") and f.get("vcodec") != "none" and (f.get("height") or 0) <= height_limit]
-        
-        if video_formats:
-            video_formats.sort(key=lambda x: (x.get("height") or 0, x.get("filesize") or x.get("filesize_approx") or 0), reverse=True)
-            best_video = video_formats[0]
-            
-            # Single stream with audio: bypass merging pipeline
-            if best_video.get("acodec") and best_video.get("acodec") != "none":
-                video_url = best_video.get("url")
-                filesize = best_video.get("filesize") or best_video.get("filesize_approx")
-                selected_ext = best_video.get("ext", "mp4")
-            else:
-                video_url = best_video.get("url")
-                selected_ext = "mp4"
-                
-                audio_formats = [f for f in formats if f.get("acodec") and f.get("acodec") != "none" and f.get("vcodec") == "none"]
-                if not audio_formats:
-                    audio_formats = [f for f in formats if f.get("acodec") and f.get("acodec") != "none"]
-                
-                if audio_formats:
-                    audio_formats.sort(key=lambda x: x.get("abr") or x.get("filesize") or x.get("filesize_approx") or 0, reverse=True)
-                    audio_url = audio_formats[0].get("url")
-                    
-                v_size = best_video.get("filesize") or best_video.get("filesize_approx") or 0
-                a_size = 0
-                if audio_formats:
-                    a_size = audio_formats[0].get("filesize") or audio_formats[0].get("filesize_approx") or 0
-                if v_size or a_size:
-                    filesize = v_size + a_size
+        if height_limit == 99999:
+            format_spec = "bestvideo+bestaudio/best"
         else:
-            video_url = info.get("url")
-            filesize = info.get("filesize") or info.get("filesize_approx")
-            selected_ext = info.get("ext", "mp4")
+            format_spec = f"bestvideo[height<={height_limit}]+bestaudio/best[height<={height_limit}]"
+        cmd.extend([
+            "-f", format_spec,
+            "--merge-output-format", "mp4"
+        ])
 
-    # Generate streams based on resolved parameters
-    if download_mode == "audio":
-        if not audio_url:
-            raise HTTPException(status_code=400, detail="Nelze získat URL audio streamu.")
-
-        filename = f"{clean_title}.mp3"
-        cmd = [
-            'ffmpeg', '-y', '-i', audio_url, '-vn',
-            '-c:a', 'libmp3lame', '-b:a', f'{audioBitrate}k',
-            '-f', 'mp3', 'pipe:1'
-        ]
-
-        logger.info(f"Streaming audio: {filename} at {audioBitrate} kbps")
+    logger.info(f"Initiating yt-dlp download: {' '.join(cmd)}")
+    process = None
+    try:
         process = await asyncio.create_subprocess_exec(
             *cmd,
+            url,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL
+            stderr=asyncio.subprocess.PIPE
         )
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            err_msg = stderr.decode().strip() or stdout.decode().strip()
+            logger.error(f"yt-dlp download failed: {err_msg}")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            raise HTTPException(status_code=400, detail=f"Stahování selhalo: {err_msg}")
+            
+    except asyncio.CancelledError:
+        logger.warning(f"Download request cancelled by client during server download. Cleaning up...")
+        if process and process.returncode is None:
+            try:
+                process.kill()
+                logger.info("Killed yt-dlp download subprocess due to cancellation.")
+            except Exception:
+                pass
+            await process.wait()
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        raise
 
-        headers = {
-            "Content-Disposition": f'attachment; filename="{urllib.parse.quote(filename)}"',
-            "Access-Control-Expose-Headers": "Content-Disposition"
-        }
-        return StreamingResponse(ffmpeg_audio_generator(process), media_type="audio/mpeg", headers=headers)
+    # Locate downloaded file
+    files = os.listdir(temp_dir)
+    if not files:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        raise HTTPException(status_code=400, detail="Stažený soubor nebyl nalezen.")
 
-    elif video_url and audio_url:
-        filename = f"{clean_title}.mp4"
-        cmd = [
-            'ffmpeg', '-y', '-i', video_url, '-i', audio_url,
-            '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'copy',
-            '-movflags', 'faststart+frag_keyframe+empty_moov',
-            '-f', 'mp4', 'pipe:1'
-        ]
+    downloaded_filename = files[0]
+    downloaded_filepath = os.path.join(temp_dir, downloaded_filename)
 
-        logger.info(f"Streaming merged video and audio: {filename}")
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL
-        )
+    # Register immediate cleanup task
+    background_tasks.add_task(cleanup_temp_dir, temp_dir)
 
-        headers = {
-            "Content-Disposition": f'attachment; filename="{urllib.parse.quote(filename)}"',
-            "Access-Control-Expose-Headers": "Content-Disposition"
-        }
-        return StreamingResponse(ffmpeg_merge_generator(process), media_type="video/mp4", headers=headers)
+    # Resolve media type based on extension
+    ext = os.path.splitext(downloaded_filename)[1].lower()
+    media_types = {
+        ".mp3": "audio/mpeg",
+        ".mp4": "video/mp4",
+        ".mkv": "video/x-matroska",
+        ".webm": "video/webm",
+        ".m4a": "audio/mp4"
+    }
+    media_type = media_types.get(ext, "application/octet-stream")
 
-    else:
-        # Single file download directly piped from source HTTP stream
-        stream_url = video_url or audio_url
-        if not stream_url:
-            raise HTTPException(status_code=400, detail="Nelze získat URL streamu.")
+    headers = {
+        "Access-Control-Expose-Headers": "Content-Disposition"
+    }
 
-        ext = selected_ext
-        filename = f"{clean_title}.{ext}"
-        media_type = f"video/{ext}" if download_mode != "audio" else f"audio/{ext}"
-
-        logger.info(f"Streaming direct single format target: {filename}")
-        headers = {
-            "Content-Disposition": f'attachment; filename="{urllib.parse.quote(filename)}"',
-            "Access-Control-Expose-Headers": "Content-Disposition"
-        }
-        if filesize:
-            headers["Content-Length"] = str(filesize)
-
-        return StreamingResponse(httpx_stream_generator(stream_url), media_type=media_type, headers=headers)
+    return FileResponse(
+        path=downloaded_filepath,
+        filename=downloaded_filename,
+        media_type=media_type,
+        headers=headers
+    )
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host=HOST, port=PORT, reload=False)
