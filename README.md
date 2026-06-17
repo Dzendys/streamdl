@@ -50,6 +50,8 @@ services:
       - COOKIES_FILE=cookies.txt
       - TEMP_DIR=temp_downloads
       - MAX_STREAM_TIMEOUT=60.0
+    volumes:
+      - ./temp_downloads:/app/temp_downloads
     restart: unless-stopped
 ```
 
