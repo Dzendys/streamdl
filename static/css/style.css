@@ -994,9 +994,10 @@ body::after {
 }
 
 .accent-switcher:hover .accent-dots-container {
-    width: 6.5rem; /* 4 dots * 1.25rem + 3 gaps * 0.5rem = 6.5rem */
+    width: 6.8rem; /* 4 dots * 1.25rem + 3 gaps * 0.5rem + hover scale margin = 6.8rem */
     opacity: 1;
     pointer-events: auto;
+    overflow: visible;
 }
 
 .accent-dot {
