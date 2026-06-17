@@ -45,13 +45,18 @@ templates = Jinja2Templates(directory="templates")
 
 @app.on_event("startup")
 def cleanup_on_startup():
-    """Clean up any leftover files in temp downloads folder on system startup."""
+    """Clean up any leftover files inside temp downloads folder on system startup."""
     if os.path.exists(TEMP_DIR):
-        logger.info(f"Cleaning up leftover temporary downloads in {TEMP_DIR} on startup...")
-        try:
-            shutil.rmtree(TEMP_DIR)
-        except Exception as e:
-            logger.error(f"Failed to cleanup {TEMP_DIR} on startup: {e}")
+        logger.info(f"Cleaning up leftover temporary downloads inside {TEMP_DIR} on startup...")
+        for item in os.listdir(TEMP_DIR):
+            item_path = os.path.join(TEMP_DIR, item)
+            try:
+                if os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
+                else:
+                    os.remove(item_path)
+            except Exception as e:
+                logger.error(f"Failed to delete {item_path} on startup: {e}")
 
 def cleanup_temp_dir(directory_path: str):
     """Delete a temporary download directory and all its contents."""
