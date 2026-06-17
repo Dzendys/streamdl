@@ -5,6 +5,8 @@
     --accent-rgb: 168, 85, 247;
     --accent-primary: #a855f7;
     --accent-secondary: #6366f1;
+    --accent-secondary-rgb: 99, 102, 241;
+    --accent-secondary-light: #818cf8;
     --accent-gradient: linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #6366f1 100%);
     --accent-glow: rgba(var(--accent-rgb), 0.4);
     --text-primary: #f8fafc;
@@ -40,7 +42,7 @@ body::before {
     position: absolute;
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, var(--accent-glow) 0%, rgba(99, 102, 241, 0.05) 70%, transparent 100%);
+    background: radial-gradient(circle, var(--accent-glow) 0%, rgba(var(--accent-secondary-rgb), 0.05) 70%, transparent 100%);
     top: 5%;
     left: 50%;
     transform: translate(-50%, 0);
@@ -53,7 +55,7 @@ body::after {
     position: absolute;
     width: 400px;
     height: 400px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 80%);
+    background: radial-gradient(circle, rgba(var(--accent-secondary-rgb), 0.15) 0%, transparent 80%);
     bottom: 5%;
     right: 10%;
     pointer-events: none;
@@ -365,9 +367,9 @@ body::after {
     font-weight: 600;
     padding: 0.15rem 0.4rem;
     border-radius: 6px;
-    background: rgba(99, 102, 241, 0.15);
-    color: #818cf8;
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: rgba(var(--accent-secondary-rgb), 0.15);
+    color: var(--accent-secondary-light);
+    border: 1px solid rgba(var(--accent-secondary-rgb), 0.2);
 }
 
 .quality-card.active .quality-badge {
@@ -911,6 +913,8 @@ body::after {
     --accent-rgb: 168, 85, 247;
     --accent-primary: #a855f7;
     --accent-secondary: #6366f1;
+    --accent-secondary-rgb: 99, 102, 241;
+    --accent-secondary-light: #818cf8;
     --accent-gradient: linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #6366f1 100%);
     --accent-glow: rgba(var(--accent-rgb), 0.4);
     --border: rgba(var(--accent-rgb), 0.15);
@@ -921,6 +925,8 @@ body::after {
     --accent-rgb: 59, 130, 246;
     --accent-primary: #3b82f6;
     --accent-secondary: #06b6d4;
+    --accent-secondary-rgb: 6, 182, 212;
+    --accent-secondary-light: #22d3ee;
     --accent-gradient: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #06b6d4 100%);
     --accent-glow: rgba(var(--accent-rgb), 0.4);
     --border: rgba(var(--accent-rgb), 0.15);
@@ -931,6 +937,8 @@ body::after {
     --accent-rgb: 16, 185, 129;
     --accent-primary: #10b981;
     --accent-secondary: #14b8a6;
+    --accent-secondary-rgb: 20, 184, 166;
+    --accent-secondary-light: #2dd4bf;
     --accent-gradient: linear-gradient(135deg, #34d399 0%, #10b981 50%, #14b8a6 100%);
     --accent-glow: rgba(var(--accent-rgb), 0.4);
     --border: rgba(var(--accent-rgb), 0.15);
@@ -941,6 +949,8 @@ body::after {
     --accent-rgb: 249, 115, 22;
     --accent-primary: #f97316;
     --accent-secondary: #fbbf24;
+    --accent-secondary-rgb: 251, 191, 36;
+    --accent-secondary-light: #fcd34d;
     --accent-gradient: linear-gradient(135deg, #fb923c 0%, #f97316 50%, #fbbf24 100%);
     --accent-glow: rgba(var(--accent-rgb), 0.4);
     --border: rgba(var(--accent-rgb), 0.15);
