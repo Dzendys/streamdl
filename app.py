@@ -514,22 +514,6 @@ async def get_video_info(url: str = Form(...)):
                             "type": "auto"
                         })
             
-            # Offer auto-translation to cs/en if they aren't already present
-            has_cs = any(s['code'] == 'cs' for s in subtitles) or any(s['code'] == 'cs' for s in auto_subtitles)
-            has_en = any(s['code'] == 'en' for s in subtitles) or any(s['code'] == 'en' for s in auto_subtitles)
-            
-            if not has_cs:
-                auto_subtitles.append({
-                    "code": "cs",
-                    "name": "Čeština (automatický překlad)",
-                    "type": "translate"
-                })
-            if not has_en:
-                auto_subtitles.append({
-                    "code": "en",
-                    "name": "Angličtina (automatický překlad)",
-                    "type": "translate"
-                })
         except Exception as e:
             logger.info(f"Could not load transcripts for {video_id}: {e}")
 
@@ -574,20 +558,10 @@ async def download_subtitles(url: str, lang: str, type: str, format: str):
         api = YouTubeTranscriptApi()
         transcript_list = api.list(video_id)
         
-        transcript_obj = None
-        
-        if type in ["native", "auto"]:
-            try:
-                transcript_obj = transcript_list.find_transcript([lang])
-            except Exception:
-                pass
-                
-        if not transcript_obj:
-            try:
-                first_t = next(iter(transcript_list))
-                transcript_obj = first_t.translate(lang)
-            except Exception as te:
-                raise HTTPException(status_code=404, detail=f"Nelze přeložit titulky do jazyka {lang}: {str(te)}")
+        try:
+            transcript_obj = transcript_list.find_transcript([lang])
+        except Exception as te:
+            raise HTTPException(status_code=404, detail=f"Titulky pro jazyk {lang} nebyly nalezeny: {str(te)}")
                 
         transcript_data = transcript_obj.fetch()
         
