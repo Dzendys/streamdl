@@ -1,4 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#e2e8f0" stroke-width="2.5">
-  <rect width="24" height="24" rx="6" fill="#0f172a"/>
-  <path stroke-linecap="round" stroke-linejoin="round" d="M6 12h12m0 0l-5-5m5 5l-5 5" />
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5">
+  <rect width="24" height="24" rx="6" fill="#0a0a0f"/>
+  <path stroke="url(#purpleGrad)" stroke-linecap="round" stroke-linejoin="round" d="M6 12h12m0 0l-5-5m5 5l-5 5" />
+  <defs>
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+  </defs>
 </svg>
