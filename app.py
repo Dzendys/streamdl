@@ -594,12 +594,12 @@ async def download_subtitles(url: str, lang: str, type: str, format: str):
         import html
         cleaned_data = []
         for entry in transcript_data:
-            text = html.unescape(entry['text'])
+            text = html.unescape(entry.text)
             text = re.sub(r'<[^>]+>', '', text)
             cleaned_data.append({
                 'text': text,
-                'start': entry['start'],
-                'duration': entry['duration']
+                'start': entry.start,
+                'duration': entry.duration
             })
             
         if format == "srt":
