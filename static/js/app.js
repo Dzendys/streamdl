@@ -569,9 +569,38 @@ const initAccentSwitcher = () => {
     const dots = document.querySelectorAll('.accent-dot');
     const savedAccent = localStorage.getItem('streamdl-accent') || 'purple';
 
+    const updateFavicon = (accent) => {
+        const faviconLink = document.querySelector('link[rel="icon"]');
+        if (!faviconLink) return;
+
+        const themeGradients = {
+            purple: { start: '#c084fc', end: '#a855f7' },
+            blue:   { start: '#60a5fa', end: '#3b82f6' },
+            green:  { start: '#34d399', end: '#10b981' },
+            orange: { start: '#fb923c', end: '#f97316' }
+        };
+
+        const colors = themeGradients[accent] || themeGradients.purple;
+
+        const svgString = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5">
+  <rect width="24" height="24" rx="6" fill="#0a0a0f"/>
+  <path stroke="url(#themeGrad)" stroke-linecap="round" stroke-linejoin="round" d="M6 12h12m0 0l-5-5m5 5l-5 5" />
+  <defs>
+    <linearGradient id="themeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${colors.start}" />
+      <stop offset="100%" stop-color="${colors.end}" />
+    </linearGradient>
+  </defs>
+</svg>`;
+
+        const encoded = btoa(unescape(encodeURIComponent(svgString)));
+        faviconLink.href = `data:image/svg+xml;base64,${encoded}`;
+    };
+
     const setAccent = (accent) => {
         document.body.setAttribute('data-accent', accent);
         localStorage.setItem('streamdl-accent', accent);
+        updateFavicon(accent);
         dots.forEach(dot => {
             if (dot.getAttribute('data-accent') === accent) {
                 dot.classList.add('active');
