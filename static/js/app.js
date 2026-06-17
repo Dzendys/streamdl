@@ -332,7 +332,7 @@ form.addEventListener('submit', async (e) => {
             throw new Error(err.detail || 'Stahování selhalo. Zkontrolujte odkaz.');
         }
 
-        const { download_id } = await startRes.json();
+        const { download_id, title } = await startRes.json();
 
         // ── Phase 2: SSE — real-time yt-dlp server download progress ──────
         markDone(dot1);
@@ -349,6 +349,7 @@ form.addEventListener('submit', async (e) => {
         managerBytes.textContent     = '0 B / ?';
         managerSpeed.textContent     = '';
         managerRemaining.textContent = 'Zbývá --:--';
+        document.getElementById('managerFilename').textContent = title || 'video.mp4';
 
         await new Promise((resolve, reject) => {
             if (signal.aborted) { reject(new DOMException('Aborted', 'AbortError')); return; }
@@ -369,7 +370,7 @@ form.addEventListener('submit', async (e) => {
                     const pct = Math.round(data.percent);
                     managerPercent.textContent   = pct + '%';
                     managerBarFill.style.width   = pct + '%';
-                    managerBytes.textContent     = `? / ${data.total || '?'}`;
+                    managerBytes.textContent     = `${data.downloaded || '?'} / ${data.total || '?'}`;
                     managerSpeed.textContent     = data.speed || '';
                     managerRemaining.textContent = data.eta ? `Zbývá ${data.eta}` : 'Zbývá --:--';
 

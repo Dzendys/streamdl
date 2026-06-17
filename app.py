@@ -282,6 +282,7 @@ async def stream_download(download_id: str, ydl_opts: dict, url: str, temp_dir: 
             _push({
                 'type':    'progress',
                 'percent': percent,
+                'downloaded': _fmt_bytes(downloaded),
                 'total':   _fmt_bytes(total),
                 'speed':   (_fmt_bytes(speed) + '/s') if speed else '',
                 'eta':     eta_str,
