@@ -1,139 +1,78 @@
 # StreamDL
 
-A professional streaming proxy and media downloader powered by FastAPI, yt-dlp, and FFmpeg.
+A lightweight media downloader and transcoder API powered by FastAPI, yt-dlp, and FFmpeg.
 
 ## Description
 
-StreamDL is a lightweight web application and API service designed to download and transcode multimedia content (video and audio) from hundreds of supported platforms (e.g., YouTube, SoundCloud, TikTok, Vimeo). The entire solution operates as a pass-through proxy: all media data is piped directly through memory to the user's browser in real-time, without writing any temporary files to the server's disk storage.
+StreamDL is a web service that downloads, transcodes (MP3), and merges (MP4) video/audio from YouTube and other platforms on the fly, streaming the output directly to the client's browser.
 
-## Key Features & Advantages
+## Key Features
 
-- **Zero Disk Usage:** Media streams are buffered and piped on the fly from the source to the client. This prevents server disk space exhaustion and enhances user privacy.
-- **On-the-Fly Audio Transcoding:** Audio streams are transcoded in real-time to MP3 format with configurable bitrates (up to 320 kbps) using FFmpeg.
-- **On-the-Fly Video/Audio Merging:** For platforms supplying separate video and audio streams (e.g., YouTube 1080p or 4K), FFmpeg merges the inputs on the fly into an MP4 container and streams the output directly to the client.
-- **Self-Healing Update Mechanism:** The system monitors extraction failures and automatically schedules background updates for the `yt-dlp` library. To prevent infinite update loops, a 10-minute cooldown window is enforced. Updates can also be triggered manually from the UI.
-- **Premium User Interface:** A fully responsive, glassmorphic dark-theme UI featuring real-time size estimation, dynamic content type detection (disabling video modes for audio-only URLs), and client-side cancellation support (via `AbortController`).
+- **Piped Streaming:** Merges and transcodes media on the fly via FFmpeg directly to the user, saving server disk space.
+- **Auto-Updates:** Automatically upgrades `yt-dlp` in the background upon extraction errors (with a 10-min cooldown) or manually via UI.
+- **Modern UI:** Responsive glassmorphic dark-theme frontend with progress bars, ETA, and download cancel buttons.
+- **Configurable:** Fully customizable via environment variables.
 
 ## Installation & Setup
 
-### System Requirements
-- Python 3.11 or newer (for local installations)
-- FFmpeg installed and available in the system's `PATH`
-- Docker and Docker Compose (recommended for production deployment)
+### Requirements
+- Python 3.11+ (local) & FFmpeg
+- Or Docker & Docker Compose
 
-### Local Setup (Without Docker)
+### Local Setup
+```bash
+git clone <REPOSITORY_URL> && cd yt
+pip install -r requirements.txt
+python app.py
+```
+App runs at `http://localhost:8080`.
 
-1. Clone the repository:
-   ```bash
-   git clone <REPOSITORY_URL>
-   cd yt
-   ```
-
-2. Install python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Start the application:
-   ```bash
-   python app.py
-   ```
-   The application will run on `http://localhost:8080` by default.
-
-### Deployment Using Docker Compose (Recommended)
-
-1. Build the Docker image and start the container in detached mode:
-   ```bash
-   docker compose up --build -d
-   ```
-   The application will map to host port `8082` (customizable via the `ports` property in `docker-compose.yml`).
-
-2. Stop the services:
-   ```bash
-   docker compose down
-   ```
+### Docker Deployment (Recommended)
+```bash
+docker compose up --build -d
+```
+App maps to port `8082`. Stop with `docker compose down`.
 
 ## Configuration (Environment Variables)
 
-The application can be configured by defining the following environment variables:
-
-| Variable | Default Value | Description |
+| Variable | Default | Description |
 | :--- | :--- | :--- |
-| `PORT` | `8080` | Port the web server listens to inside the container. |
-| `HOST` | `0.0.0.0` | Bind IP address for the web server. |
-| `YTDLP_COOLDOWN` | `600` | Cooldown period (in seconds) between yt-dlp update checks. |
-| `COOKIES_FILE` | `cookies.txt` | Path to a cookies file for extraction from restricted sites. |
-| `TEMP_DIR` | `temp_downloads` | Custom path to store temporary download files during conversion/merging. |
-| `MAX_STREAM_TIMEOUT` | `60.0` | Connection timeout (in seconds) for HTTP remote streaming clients. |
-
-Set these variables in the `environment` section of `docker-compose.yml`.
+| `PORT` | `8080` | Container web server port. |
+| `HOST` | `0.0.0.0` | Bind IP address. |
+| `YTDLP_COOLDOWN` | `600` | Cooldown (seconds) between yt-dlp update checks. |
+| `COOKIES_FILE` | `cookies.txt` | Path to cookies file. |
+| `TEMP_DIR` | `temp_downloads` | Temporary directory for conversion/merging. |
+| `MAX_STREAM_TIMEOUT` | `60.0` | Connection timeout (seconds) for streaming clients. |
 
 ## API Documentation
 
-### 1. Fetch Media Metadata
+### 1. Fetch Metadata
+Extracts media info and calculates estimated file sizes.
+- **POST** `/api/info`
+- **Form Data:** `url` (string, required)
+- **Response:** JSON containing title, duration, uploader, size estimates, and media format support.
 
-Extracts media information and calculates file size estimates.
+### 2. Start Download Job
+Triggers the download/transcode pipeline.
+- **POST** `/api/download/start`
+- **Form Data:**
+  - `url` (string, required)
+  - `downloadMode` (`auto`, `audio`, `mute`)
+  - `videoQuality` (`max`, `1080`, `720`, `480`)
+  - `audioBitrate` (`320`, `256`, `192`, `128`)
+  - `concurrency` (int, default 5)
+- **Response:** `{"download_id": "...", "title": "..."}`
 
-- **Endpoint:** `/api/info`
-- **Method:** `POST`
-- **Request Format (Form Data):**
-  - `url` (string, required): URL of the target video/audio.
+### 3. Progress Event Stream (SSE)
+Streams download status and progress from the server.
+- **GET** `/api/download/{download_id}/events`
+- **Response:** SSE events (`progress`, `status`, `done`, `error`).
 
-- **Response Example (JSON):**
-  ```json
-  {
-    "title": "Video Title",
-    "thumbnail": "https://domain.com/image.jpg",
-    "duration": "2:15:32",
-    "uploader": "Channel Name / Author",
-    "sizes": {
-      "360": 1234567,
-      "480": 2345678,
-      "720": 4567890,
-      "1080": 9876543,
-      "max": 12345678,
-      "audio": 543210
-    },
-    "has_video": true,
-    "max_height": 1080
-  }
-  ```
+### 4. Fetch File
+Downloads the completed media file and cleans up the temporary directory.
+- **GET** `/api/download/{download_id}/file`
+- **Response:** Streams the completed file.
 
-### 2. Stream & Download Media
-
-Triggers the transcoding/merging pipeline and streams the binary content back.
-
-- **Endpoint:** `/api/download`
-- **Method:** `POST`
-- **Request Format (Form Data):**
-  - `url` (string, required): URL of the media.
-  - `downloadMode` (string, optional, default `auto`): Download mode. Options:
-    - `auto`: Download video and audio, merge them into MP4.
-    - `audio`: Download audio only and transcode to MP3.
-    - `mute`: Download video only (without audio).
-  - `videoQuality` (string, optional, default `max`): Video resolution threshold limit. Options: `max`, `1080`, `720`, `480`.
-  - `audioBitrate` (string, optional, default `320`): Target datate rate for MP3 conversion in kbps. Options: `320`, `256`, `192`, `128`.
-
-### 3. Get yt-dlp Version
-
-- **Endpoint:** `/api/yt-dlp/version`
-- **Method:** `GET`
-- **Response Example (JSON):**
-  ```json
-  {
-    "version": "2026.06.17"
-  }
-  ```
-
-### 4. Upgrade yt-dlp
-
-- **Endpoint:** `/api/yt-dlp/update`
-- **Method:** `POST`
-- **Response Example (JSON):**
-  ```json
-  {
-    "success": true,
-    "message": "Success: updated to 2026.06.17",
-    "version": "2026.06.17"
-  }
-  ```
+### 5. yt-dlp Info & Update
+- **GET** `/api/yt-dlp/version` — Get current yt-dlp version.
+- **POST** `/api/yt-dlp/update` — Manually trigger yt-dlp update.
