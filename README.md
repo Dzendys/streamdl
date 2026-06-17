@@ -63,6 +63,7 @@ The application can be configured by defining the following environment variable
 | `HOST` | `0.0.0.0` | Bind IP address for the web server. |
 | `YTDLP_COOLDOWN` | `600` | Cooldown period (in seconds) between yt-dlp update checks. |
 | `COOKIES_FILE` | `cookies.txt` | Path to a cookies file for extraction from restricted sites. |
+| `TEMP_DIR` | `temp_downloads` | Custom path to store temporary download files during conversion/merging. |
 | `MAX_STREAM_TIMEOUT` | `60.0` | Connection timeout (in seconds) for HTTP remote streaming clients. |
 
 Set these variables in the `environment` section of `docker-compose.yml`.

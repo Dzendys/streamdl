@@ -9,5 +9,6 @@ services:
       - HOST=0.0.0.0
       - YTDLP_COOLDOWN=600
       - COOKIES_FILE=cookies.txt
+      - TEMP_DIR=temp_downloads
       - MAX_STREAM_TIMEOUT=60.0
     restart: unless-stopped

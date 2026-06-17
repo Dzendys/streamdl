@@ -27,6 +27,7 @@ PORT = int(os.getenv("PORT", "8080"))
 HOST = os.getenv("HOST", "0.0.0.0")
 YTDLP_COOLDOWN = int(os.getenv("YTDLP_COOLDOWN", "600"))
 COOKIES_FILE = os.getenv("COOKIES_FILE", "cookies.txt")
+TEMP_DIR = os.getenv("TEMP_DIR", "temp_downloads")
 
 app = FastAPI(title="StreamDL API")
 
@@ -44,14 +45,13 @@ templates = Jinja2Templates(directory="templates")
 
 @app.on_event("startup")
 def cleanup_on_startup():
-    """Clean up any leftover files in temp_downloads folder on system startup."""
-    temp_dir = "temp_downloads"
-    if os.path.exists(temp_dir):
-        logger.info("Cleaning up leftover temporary downloads on startup...")
+    """Clean up any leftover files in temp downloads folder on system startup."""
+    if os.path.exists(TEMP_DIR):
+        logger.info(f"Cleaning up leftover temporary downloads in {TEMP_DIR} on startup...")
         try:
-            shutil.rmtree(temp_dir)
+            shutil.rmtree(TEMP_DIR)
         except Exception as e:
-            logger.error(f"Failed to cleanup temp_downloads on startup: {e}")
+            logger.error(f"Failed to cleanup {TEMP_DIR} on startup: {e}")
 
 def cleanup_temp_dir(directory_path: str):
     """Delete a temporary download directory and all its contents."""
@@ -447,7 +447,7 @@ async def start_download(
             download_mode = "audio"
 
     download_id = str(uuid.uuid4())
-    temp_dir = os.path.join("temp_downloads", download_id)
+    temp_dir = os.path.join(TEMP_DIR, download_id)
     os.makedirs(temp_dir, exist_ok=True)
 
     output_template = os.path.join(temp_dir, f"{clean_title}.%(ext)s")
