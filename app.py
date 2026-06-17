@@ -71,16 +71,38 @@ def cleanup_temp_dir(directory_path: str):
 # yt-dlp auto-update
 # ---------------------------------------------------------------------------
 
+async def get_installed_ytdlp_version() -> str:
+    """Get the currently installed version of yt-dlp on disk by running a subprocess."""
+    try:
+        process = await asyncio.create_subprocess_exec(
+            "python", "-c", "import yt_dlp; print(yt_dlp.version.__version__)",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await process.communicate()
+        return stdout.decode().strip()
+    except Exception:
+        return ""
+
+async def restart_server_soon():
+    """Schedule process exit after a brief delay, allowing HTTP response to be sent."""
+    await asyncio.sleep(1.0)
+    logger.info("Restarting application container to cleanly load the updated yt-dlp version...")
+    os._exit(0)
+
 last_update_time = 0.0
 update_lock = asyncio.Lock()
 
 async def run_update(bypass_cooldown: bool = False) -> tuple[bool, str]:
-    """Run an in-memory upgrade of yt-dlp via pip install and module reload."""
+    """Run an upgrade of yt-dlp via pip install and trigger a clean restart if a new version is detected."""
     global last_update_time
     async with update_lock:
         now = time.time()
         if not bypass_cooldown and (now - last_update_time < YTDLP_COOLDOWN):
             return False, "cooldown"
+
+        logger.info("Checking current yt-dlp version on disk...")
+        old_ver = await get_installed_ytdlp_version()
 
         logger.info("Executing pip upgrade for yt-dlp...")
         try:
@@ -91,14 +113,17 @@ async def run_update(bypass_cooldown: bool = False) -> tuple[bool, str]:
             )
             stdout, stderr = await process.communicate()
             if process.returncode == 0:
-                to_del = [m for m in sys.modules if m.startswith('yt_dlp')]
-                for m in to_del:
-                    del sys.modules[m]
-                import yt_dlp
                 last_update_time = time.time()
-                new_ver = yt_dlp.version.__version__
-                logger.info(f"yt-dlp updated to {new_ver}")
-                return True, f"Success: updated to {new_ver}"
+                new_ver = await get_installed_ytdlp_version()
+                in_memory_ver = yt_dlp.version.__version__
+                
+                if new_ver != in_memory_ver:
+                    logger.info(f"yt-dlp upgraded from {in_memory_ver} to {new_ver}. Scheduling server restart...")
+                    asyncio.create_task(restart_server_soon())
+                    return True, f"Success: updated to {new_ver} (restarting server to apply)"
+                else:
+                    logger.info(f"yt-dlp is already at the latest version: {new_ver}")
+                    return True, f"Already up-to-date: {new_ver}"
             else:
                 err_msg = stderr.decode().strip() or stdout.decode().strip()
                 logger.error(f"pip update failed: {err_msg}")
