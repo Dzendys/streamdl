@@ -585,12 +585,18 @@ async def download_subtitles(url: str, lang: str, type: str, format: str):
             media_type = "text/vtt"
             filename = f"{video_title}.{lang}.vtt"
             
+        import urllib.parse
+        encoded_filename = urllib.parse.quote(filename)
+        ascii_filename = filename.encode("ascii", "ignore").decode("ascii")
+        if not ascii_filename:
+            ascii_filename = f"subtitles.{format}"
+
         from fastapi.responses import Response
         return Response(
             content=content,
             media_type=media_type,
             headers={
-                "Content-Disposition": f"attachment; filename=\"{filename}\""
+                "Content-Disposition": f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
             }
         )
     except Exception as e:
