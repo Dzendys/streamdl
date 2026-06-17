@@ -48,7 +48,6 @@ services:
       - HOST=0.0.0.0
       - YTDLP_COOLDOWN=600
       - COOKIES_FILE=cookies.txt
-      - TEMP_DIR=temp_downloads
       - MAX_STREAM_TIMEOUT=60.0
     volumes:
       - ./temp_downloads:/app/temp_downloads
@@ -63,7 +62,6 @@ services:
 | `HOST` | `0.0.0.0` | Bind IP address. |
 | `YTDLP_COOLDOWN` | `600` | Cooldown (seconds) between yt-dlp update checks. |
 | `COOKIES_FILE` | `cookies.txt` | Path to cookies file. |
-| `TEMP_DIR` | `temp_downloads` | Temporary directory for conversion/merging. |
 | `MAX_STREAM_TIMEOUT` | `60.0` | Connection timeout (seconds) for streaming clients. |
 
 ## API Documentation

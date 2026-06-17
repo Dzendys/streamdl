@@ -27,7 +27,7 @@ PORT = int(os.getenv("PORT", "8080"))
 HOST = os.getenv("HOST", "0.0.0.0")
 YTDLP_COOLDOWN = int(os.getenv("YTDLP_COOLDOWN", "600"))
 COOKIES_FILE = os.getenv("COOKIES_FILE", "cookies.txt")
-TEMP_DIR = os.getenv("TEMP_DIR", "temp_downloads")
+TEMP_DIR = "temp_downloads"
 
 app = FastAPI(title="StreamDL API")
 
