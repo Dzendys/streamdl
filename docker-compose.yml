@@ -4,12 +4,10 @@ services:
     container_name: streamdl
     ports:
       - "8082:8080"
-    environment:
-      - PORT=8080
-      - HOST=0.0.0.0
-      - YTDLP_COOLDOWN=600
-      - COOKIES_FILE=cookies.txt
-      - MAX_STREAM_TIMEOUT=60.0
+    env_file:
+      - .env
     volumes:
       - ./temp_downloads:/app/temp_downloads
     restart: unless-stopped
+
+
