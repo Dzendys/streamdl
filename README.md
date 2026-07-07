@@ -87,7 +87,19 @@ To run the application directly on your host machine:
 
 ## Configuration (Environment Variables)
 
-Variables are loaded from the `.env` file when running via Docker Compose:
+Variables are loaded from the `.env` file when running via Docker Compose or when passed to the container.
+
+Example `.env` file ([.env.example](.env.example)):
+```env
+# Cooldown time in seconds between yt-dlp executions
+YTDLP_COOLDOWN=600
+
+# File name for YouTube cookies (placed in the container workspace /app)
+COOKIES_FILE=cookies.txt
+
+# Maximum time in seconds to wait for a stream to start
+MAX_STREAM_TIMEOUT=60.0
+```
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
