@@ -1,0 +1,20 @@
+# Docker environment files (contains local config/secrets)
+.env
+
+# Temporary download directories
+temp_downloads/
+
+# YouTube cookies (contains authentication credentials)
+cookies.txt
+
+# Python cached files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
