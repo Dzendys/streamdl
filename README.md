@@ -15,35 +15,63 @@ StreamDL is a web service that downloads, transcodes (MP3), and merges (MP4) vid
 
 ## Installation & Setup
 
-### Requirements
-- Python 3.11+ (local) & FFmpeg
-- Or Docker & Docker Compose
+### 1. Pre-built Docker Image via GHCR (Recommended)
 
-### Local Setup
-```bash
-git clone <REPOSITORY_URL> && cd yt
-pip install -r requirements.txt
-python app.py
-```
-App runs at `http://localhost:8080`.
+You can run the service directly using the pre-built image hosted on GitHub Container Registry:
 
-### Docker Deployment (Recommended)
-
-1. **Prepare Environment Variables**
-   Copy the example environment file:
+1. Prepare your local `.env` file from the example:
    ```bash
    cp .env.example .env
    ```
-   Customize variables in `.env` if needed (e.g. change ports, directories, or limits).
+2. Run the container:
+   ```bash
+   docker run -d \
+     --name streamdl \
+     -p 8082:8080 \
+     --env-file .env \
+     -v ./temp_downloads:/app/temp_downloads \
+     --restart unless-stopped \
+     ghcr.io/dzendys/streamdl:latest
+   ```
+   The service will be accessible at `http://localhost:8082`.
 
-2. **Start the Service**
-   Start the container in detached mode:
+### 2. Docker Build from Source
+
+If you want to build the Docker image locally:
+
+1. Clone the repository and navigate into it:
+   ```bash
+   git clone <REPOSITORY_URL> && cd streamdl
+   ```
+2. Copy the environment template:
+   ```bash
+   cp .env.example .env
+   ```
+3. Build and run using Docker Compose:
    ```bash
    docker compose up --build -d
    ```
-   By default, the app is mapped to host port `8082`. Stop the container using `docker compose down`.
+   For configuration details, refer to the [docker-compose.yml](docker-compose.yml) file.
 
-For the configuration details, refer to the [docker-compose.yml](docker-compose.yml) file.
+### 3. Local Setup (Python & FFmpeg)
+
+To run the application directly on your host machine:
+
+1. Ensure you have **Python 3.11+** and **FFmpeg** installed on your system.
+2. Clone the repository and install dependencies:
+   ```bash
+   git clone <REPOSITORY_URL> && cd streamdl
+   pip install -r requirements.txt
+   ```
+3. Prepare your environment variables (optional):
+   ```bash
+   cp .env.example .env
+   ```
+4. Start the application:
+   ```bash
+   python app.py
+   ```
+   The app will run at `http://localhost:8080`.
 
 
 ## Configuration (Environment Variables)
