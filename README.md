@@ -29,39 +29,31 @@ App runs at `http://localhost:8080`.
 
 ### Docker Deployment (Recommended)
 
-Start the container in detached mode:
-```bash
-docker compose up --build -d
-```
-App maps to host port `8082`. Stop with `docker compose down`.
+1. **Prepare Environment Variables**
+   Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+   Customize variables in `.env` if needed (e.g. change ports, directories, or limits).
 
-Example `docker-compose.yml`:
-```yaml
-services:
-  streamdl:
-    build: .
-    container_name: streamdl
-    ports:
-      - "8082:8080"
-    environment:
-      - PORT=8080
-      - HOST=0.0.0.0
-      - YTDLP_COOLDOWN=600
-      - COOKIES_FILE=cookies.txt
-      - MAX_STREAM_TIMEOUT=60.0
-    volumes:
-      - ./temp_downloads:/app/temp_downloads
-    restart: unless-stopped
-```
+2. **Start the Service**
+   Start the container in detached mode:
+   ```bash
+   docker compose up --build -d
+   ```
+   By default, the app is mapped to host port `8082`. Stop the container using `docker compose down`.
+
+For the configuration details, refer to the [docker-compose.yml](docker-compose.yml) file.
+
 
 ## Configuration (Environment Variables)
 
+Variables are loaded from the `.env` file when running via Docker Compose:
+
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `PORT` | `8080` | Container web server port. |
-| `HOST` | `0.0.0.0` | Bind IP address. |
 | `YTDLP_COOLDOWN` | `600` | Cooldown (seconds) between yt-dlp update checks. |
-| `COOKIES_FILE` | `cookies.txt` | Path to cookies file. |
+| `COOKIES_FILE` | `cookies.txt` | Path to cookies file inside the container. |
 | `MAX_STREAM_TIMEOUT` | `60.0` | Connection timeout (seconds) for streaming clients. |
 
 ## API Documentation
