@@ -19,39 +19,50 @@ StreamDL is a web service that downloads, transcodes (MP3), and merges (MP4) vid
 
 You can run the service directly using the pre-built image hosted on GitHub Container Registry:
 
-1. Prepare your local `.env` file from the example:
-   ```bash
-   cp .env.example .env
-   ```
-2. Run the container:
-   ```bash
-   docker run -d \
-     --name streamdl \
-     -p 8082:8080 \
-     --env-file .env \
-     -v ./temp_downloads:/app/temp_downloads \
-     --restart unless-stopped \
-     ghcr.io/dzendys/streamdl:latest
-   ```
-   The service will be accessible at `http://localhost:8082`.
+**Option A: Using Docker Compose (Recommended)**
+Create a `docker-compose.yml` file:
+```yaml
+services:
+  streamdl:
+    image: ghcr.io/dzendys/streamdl:latest
+    container_name: streamdl
+    ports:
+      - "8082:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./temp_downloads:/app/temp_downloads
+    restart: unless-stopped
+```
+Prepare your `.env` file from the example (`cp .env.example .env`) and start the service:
+```bash
+docker compose up -d
+```
+
+**Option B: Using Docker Run**
+Prepare your `.env` file from the example (`cp .env.example .env`) and run the container:
+```bash
+docker run -d \
+  --name streamdl \
+  -p 8082:8080 \
+  --env-file .env \
+  -v ./temp_downloads:/app/temp_downloads \
+  --restart unless-stopped \
+  ghcr.io/dzendys/streamdl:latest
+```
+
+The service will be accessible at `http://localhost:8082`.
 
 ### 2. Docker Build from Source
 
-If you want to build the Docker image locally:
+If you want to build the Docker image locally from source:
 
-1. Clone the repository and navigate into it:
-   ```bash
-   git clone <REPOSITORY_URL> && cd streamdl
-   ```
-2. Copy the environment template:
-   ```bash
-   cp .env.example .env
-   ```
-3. Build and run using Docker Compose:
+1. Clone the repository: `git clone <REPOSITORY_URL> && cd streamdl`
+2. Prepare your `.env` file: `cp .env.example .env`
+3. Build and run using the default [docker-compose.yml](docker-compose.yml):
    ```bash
    docker compose up --build -d
    ```
-   For configuration details, refer to the [docker-compose.yml](docker-compose.yml) file.
 
 ### 3. Local Setup (Python & FFmpeg)
 
